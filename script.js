@@ -4444,7 +4444,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
     // =========================================================================
-    // MODULE: workouts.js (1295 lines)
+    // MODULE: workouts.js (1482 lines)
     // =========================================================================
 // FitPulse — Workout Center, Live Tracker & Exercise Engine
 
@@ -5740,6 +5740,193 @@ document.addEventListener('DOMContentLoaded', () => {
         switchView('workouts');
         showToast('Viewing Coach-Assigned Workout Routines', 'fa-dumbbell');
     });
+
+    // -------------------------------------------------------------------------
+    // 3D REALISTIC BIOMETRIC MUSCLE ANALYZER & SCANNER CONTROLLER
+    // -------------------------------------------------------------------------
+    let is3DTiltEnabled = true;
+    let currentBodySide = 'front';
+
+    // Global view switcher for Front / Back 3D Flip
+    window.switchBodyView = function(side) {
+        currentBodySide = side;
+        const flipInner = document.getElementById('bodyFlipInner');
+        const btnFront = document.getElementById('btnViewFront');
+        const btnBack = document.getElementById('btnViewBack');
+        const viewLabel = document.getElementById('hudViewLabel');
+
+        if (side === 'back') {
+            if (flipInner) flipInner.classList.add('flipped');
+            if (btnFront) { btnFront.style.background = 'transparent'; btnFront.style.color = 'var(--text-muted)'; }
+            if (btnBack) { btnBack.style.background = '#8b5cf6'; btnBack.style.color = '#fff'; }
+            if (viewLabel) viewLabel.innerHTML = '<span style="color:#a855f7;">POSTERIOR 3D</span>';
+        } else {
+            if (flipInner) flipInner.classList.remove('flipped');
+            if (btnBack) { btnBack.style.background = 'transparent'; btnBack.style.color = 'var(--text-muted)'; }
+            if (btnFront) { btnFront.style.background = '#8b5cf6'; btnFront.style.color = '#fff'; }
+            if (viewLabel) viewLabel.innerHTML = '<span style="color:#38bdf8;">ANTERIOR 3D</span>';
+        }
+    };
+
+    // Toggle 3D Tilt Physics
+    window.toggle3DTilt = function() {
+        is3DTiltEnabled = !is3DTiltEnabled;
+        const btn = document.getElementById('btnViewTilt');
+        if (btn) {
+            btn.style.color = is3DTiltEnabled ? '#a855f7' : 'var(--text-muted)';
+        }
+        const inner = document.getElementById('bodyFlipInner');
+        if (inner && !is3DTiltEnabled) {
+            inner.style.transform = currentBodySide === 'back' ? 'rotateY(180deg)' : 'none';
+        }
+        showToast(is3DTiltEnabled ? '3D Hologram Tilt Active' : '3D Hologram Tilt Paused', 'fa-cube');
+    };
+
+    // Holographic 3D Mouse Parallax Tilt Physics on Hover
+    const scannerViewport = document.getElementById('scannerViewport');
+    if (scannerViewport) {
+        scannerViewport.addEventListener('mousemove', function(e) {
+            if (!is3DTiltEnabled) return;
+            const flipInner = document.getElementById('bodyFlipInner');
+            if (!flipInner) return;
+
+            const rect = scannerViewport.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            
+            const centerX = rect.width / 2;
+            const centerY = rect.height / 2;
+            
+            // Subtle holographic tilt angles (-12deg to +12deg)
+            const rotateY = ((x - centerX) / centerX) * 14;
+            const rotateX = -((y - centerY) / centerY) * 12;
+
+            if (currentBodySide === 'back') {
+                flipInner.style.transform = `perspective(1000px) rotateX(${rotateX}deg) rotateY(${180 + rotateY}deg) scale3d(1.02, 1.02, 1.02)`;
+            } else {
+                flipInner.style.transform = `perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) scale3d(1.02, 1.02, 1.02)`;
+            }
+        });
+
+        scannerViewport.addEventListener('mouseleave', function() {
+            const flipInner = document.getElementById('bodyFlipInner');
+            if (!flipInner) return;
+            flipInner.style.transform = currentBodySide === 'back' ? 'rotateY(180deg)' : 'none';
+        });
+    }
+
+    // Direct clickable muscle zones on the 3D model
+    document.querySelectorAll('.muscle-zone').forEach(zone => {
+        zone.addEventListener('click', function(e) {
+            e.stopPropagation();
+            const muscleName = this.dataset.muscle || 'Target Muscle';
+            highlightMuscleGroup(this.id, muscleName, '100% EXERTION', 'DIRECT ANATOMICAL SELECTION');
+            showToast(`Scanned: ${muscleName}`, 'fa-crosshairs');
+        });
+    });
+
+    // Master function to trigger high-precision muscle highlight
+    function highlightMuscleGroup(zoneId, titleText, intensityStr, subtitleText, preferBack = false) {
+        // Reset all active zones
+        document.querySelectorAll('.muscle-zone').forEach(z => {
+            z.classList.remove('active');
+        });
+
+        // Activate targeted zone
+        const targetZone = document.getElementById(zoneId);
+        if (targetZone) {
+            targetZone.classList.add('active');
+        }
+
+        // Auto flip 3D body if needed
+        if (preferBack && currentBodySide !== 'back') {
+            switchBodyView('back');
+        } else if (!preferBack && currentBodySide === 'back') {
+            switchBodyView('front');
+        }
+
+        // Update HUD Callout Box
+        const textEl = document.getElementById('activeMuscleText');
+        const subEl = document.getElementById('activeMuscleSub');
+        const targetMode = document.getElementById('hudTargetMode');
+        const intensityVal = document.getElementById('hudIntensityVal');
+
+        if (textEl) textEl.innerHTML = `<span style="color:#f43f5e; font-weight:700;"><i class="fa-solid fa-crosshairs"></i> ${titleText}</span>`;
+        if (subEl) subEl.innerHTML = subtitleText || 'High-Precision 3D Biometric Muscle Activation';
+        if (targetMode) targetMode.innerHTML = '<span style="color:#ef4444;">ACTIVE SCAN</span>';
+        if (intensityVal) intensityVal.innerText = intensityStr || '95% EXERTION';
+    }
+
+    // Global Exercise Card Click Listener for Automatic 3D Model Activation
+    document.addEventListener('click', function(e) {
+        const card = e.target.closest('.exercise-card');
+        if (!card) return;
+
+        const targetTag = card.querySelector('.ex-target-tag');
+        const exNameEl = card.querySelector('.ex-name');
+        const exName = exNameEl ? exNameEl.textContent.trim() : 'Selected Exercise';
+        const targetText = targetTag ? targetTag.textContent.toLowerCase() : '';
+
+        let matched = false;
+
+        // 1. Chest / Pectorals
+        if (targetText.includes('pectoral') || targetText.includes('chest') || targetText.includes('bench press') || targetText.includes('cable fly')) {
+            highlightMuscleGroup('mz-chest', 'Chest • Pectoralis Major & Sternal Head', '94% HYPERTROPHY', `${exName} — Prime mover for horizontal pushing power`, false);
+            matched = true;
+        }
+        // 2. Shoulders / Deltoids
+        else if (targetText.includes('delt') || targetText.includes('shoulder') || targetText.includes('overhead press') || targetText.includes('lateral raise')) {
+            highlightMuscleGroup('mz-deltoids', 'Deltoids • Anterior & Lateral Heads', '96% PEAK LOAD', `${exName} — Shoulder cap width & overhead pressing drive`, false);
+            // Also secondary activate core
+            document.getElementById('mz-core')?.classList.add('active');
+            matched = true;
+        }
+        // 3. Core / Abdominals
+        else if (targetText.includes('core') || targetText.includes('abdom') || targetText.includes('spine') || targetText.includes('oblique')) {
+            highlightMuscleGroup('mz-core', 'Core • Rectus Abdominis & Transverse Core', '88% STABILIZATION', `${exName} — Trunk stabilization & intra-abdominal pressure`, false);
+            matched = true;
+        }
+        // 4. Arms / Biceps / Triceps
+        else if (targetText.includes('arm') || targetText.includes('bicep') || targetText.includes('tricep') || targetText.includes('pushdown') || targetText.includes('curl')) {
+            highlightMuscleGroup('mz-arms', 'Arms • Triceps Brachii & Biceps Flexors', '92% ISOLATION', `${exName} — Elbow extension & peak contraction load`, false);
+            matched = true;
+        }
+        // 5. Back / Lats / Trapezius (Auto Flip to Back View)
+        else if (targetText.includes('lat') || targetText.includes('back') || targetText.includes('dorsi') || targetText.includes('pulldown') || targetText.includes('row')) {
+            highlightMuscleGroup('mz-lats', 'Back • Latissimus Dorsi & Upper Back Wings', '95% CONTRACTION', `${exName} — Scapular retraction & vertical pulling width`, true);
+            matched = true;
+        }
+        // 6. Hamstrings & Glutes (Auto Flip to Back View)
+        else if (targetText.includes('hamstring') || targetText.includes('glute') || targetText.includes('rdl') || targetText.includes('deadlift') || targetText.includes('thrust')) {
+            highlightMuscleGroup('mz-hamstrings', 'Posterior Chain • Hamstrings & Gluteus Maximus', '98% PEAK FORCE', `${exName} — Powerful hip extension & posterior hamstring stretch`, true);
+            document.getElementById('mz-glutes')?.classList.add('active');
+            matched = true;
+        }
+        // 7. Quads / Thighs / Squats
+        else if (targetText.includes('quad') || targetText.includes('squat') || targetText.includes('leg press') || targetText.includes('femoris') || targetText.includes('extension')) {
+            highlightMuscleGroup('mz-legs', 'Quadriceps • Rectus Femoris & Vastus Medialis', '97% QUAD DRIVE', `${exName} — Knee extension & leg drive power`, false);
+            matched = true;
+        }
+        // 8. Calves
+        else if (targetText.includes('calf') || targetText.includes('gastrocnemius') || targetText.includes('soleus')) {
+            highlightMuscleGroup('mz-calves', 'Calves • Gastrocnemius & Plantar Flexors', '90% ENDURANCE', `${exName} — Ankle extension & explosive calf push`, false);
+            matched = true;
+        }
+        // 9. Full Body / Mobility / Stretches
+        else if (targetText.includes('full body') || targetText.includes('mobility') || targetText.includes('stretch') || targetText.includes('yoga') || targetText.includes('tissue')) {
+            highlightMuscleGroup('mz-fullbody', 'Kinetic Chain • Full Body Joint Mobility', '75% ACTIVE RECOVERY', `${exName} — Myofascial release & neuromuscular balance`, false);
+            matched = true;
+        }
+
+        if (matched) {
+            // Smoothly scroll the 3D card slightly into view if on mobile/smaller screens
+            const cardEl = document.getElementById('woMuscleCard');
+            if (cardEl && window.innerWidth < 992) {
+                cardEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }
+        }
+    });
+
 
 
     // =========================================================================

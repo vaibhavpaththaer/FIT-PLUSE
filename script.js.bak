@@ -1825,7 +1825,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
     // =========================================================================
-    // MODULE: dashboard.js (989 lines)
+    // MODULE: dashboard.js (1043 lines)
     // =========================================================================
 // FitPulse — Dashboard, Navigation & Notifications
 
@@ -1970,6 +1970,19 @@ document.addEventListener('DOMContentLoaded', () => {
         const fitnessCard = document.querySelector('.profile-fitness-summary-card');
         const profGoalBadge = document.getElementById('profGoalBadge');
         
+        // Quick actions to hide for coaches
+        const actionUpdateWeight = document.getElementById('profActionUpdateWeight');
+        const actionUpdateGoal = document.getElementById('profActionUpdateGoal');
+        
+        // Lifetime Stats Section
+        const statsTitle = document.querySelector('.profile-stats-section .section-title');
+        const statsGrid = document.querySelector('.profile-stats-grid');
+        
+        // Save athlete HTML if not saved yet
+        if (statsGrid && !statsGrid.dataset.athleteHtml) {
+            statsGrid.dataset.athleteHtml = statsGrid.innerHTML;
+        }
+
         // Use setDisplay utility if exists, else direct style
         const setDisp = (el, val) => { if (el && el.closest('.pi-field')) el.closest('.pi-field').style.display = val; };
         
@@ -1984,6 +1997,39 @@ document.addEventListener('DOMContentLoaded', () => {
             if (profInfoMedical) setDisp(profInfoMedical, 'none');
             if (fitnessCard) fitnessCard.style.display = 'none';
             if (profGoalBadge) profGoalBadge.style.display = 'none';
+            
+            if (actionUpdateWeight) actionUpdateWeight.style.display = 'none';
+            if (actionUpdateGoal) actionUpdateGoal.style.display = 'none';
+            
+            if (statsTitle) statsTitle.innerHTML = `<i class="fa-solid fa-chart-simple icon-accent"></i> Professional Coaching Statistics`;
+            if (statsGrid) {
+                statsGrid.innerHTML = `
+                    <div class="metric-card">
+                        <div class="metric-icon-box icon-purple"><i class="fa-solid fa-users"></i></div>
+                        <div class="metric-details"><span class="metric-label">Active Athletes</span>
+                        <div class="metric-value-row"><span class="metric-value">12</span><span class="metric-unit">Clients</span></div>
+                        <span class="metric-trend trend-positive"><i class="fa-solid fa-arrow-up"></i> +2 this month</span></div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-icon-box icon-blue"><i class="fa-solid fa-dumbbell"></i></div>
+                        <div class="metric-details"><span class="metric-label">Assigned Workouts</span>
+                        <div class="metric-value-row"><span class="metric-value">145</span><span class="metric-unit">Plans</span></div>
+                        <span class="metric-badge-status status-good">Lifetime</span></div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-icon-box icon-orange"><i class="fa-solid fa-utensils"></i></div>
+                        <div class="metric-details"><span class="metric-label">Diet Plans Sent</span>
+                        <div class="metric-value-row"><span class="metric-value">84</span><span class="metric-unit">Diets</span></div>
+                        <span class="metric-sub-info">Lifetime</span></div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-icon-box icon-cyan"><i class="fa-solid fa-star"></i></div>
+                        <div class="metric-details"><span class="metric-label">Client Rating</span>
+                        <div class="metric-value-row"><span class="metric-value">4.9</span><span class="metric-unit">/ 5.0</span></div>
+                        <span class="metric-trend trend-positive"><i class="fa-solid fa-check"></i> Highly Rated</span></div>
+                    </div>
+                `;
+            }
         } else {
             if (mainHeading) mainHeading.innerHTML = '<i class="fa-solid fa-id-card-clip icon-accent"></i> Athlete Profile & Bio-Analytics';
             if (subHeading) subHeading.textContent = 'Manage personal information, track long-term fitness milestones, and analyze body composition progression.';
@@ -1995,6 +2041,14 @@ document.addEventListener('DOMContentLoaded', () => {
             if (profInfoMedical) setDisp(profInfoMedical, 'flex');
             if (fitnessCard) fitnessCard.style.display = 'block';
             if (profGoalBadge) profGoalBadge.style.display = 'inline-flex';
+            
+            if (actionUpdateWeight) actionUpdateWeight.style.display = 'flex';
+            if (actionUpdateGoal) actionUpdateGoal.style.display = 'flex';
+            
+            if (statsTitle) statsTitle.innerHTML = `<i class="fa-solid fa-chart-simple icon-accent"></i> Lifetime Profile Statistics`;
+            if (statsGrid && statsGrid.dataset.athleteHtml) {
+                statsGrid.innerHTML = statsGrid.dataset.athleteHtml;
+            }
         }
 
         const currentName = (regProfile.name && regProfile.name !== 'Alex Morgan') ? regProfile.name : (localStorage.getItem('fitpulse_user_name') || regProfile.name || 'User');
@@ -4390,7 +4444,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
     // =========================================================================
-    // MODULE: workouts.js (1295 lines)
+    // MODULE: workouts.js (1373 lines)
     // =========================================================================
 // FitPulse — Workout Center, Live Tracker & Exercise Engine
 
@@ -5685,6 +5739,84 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('coachHeroViewPlansBtn')?.addEventListener('click', () => {
         switchView('workouts');
         showToast('Viewing Coach-Assigned Workout Routines', 'fa-dumbbell');
+    });
+
+    // -------------------------------------------------------------------------
+    // 3D MUSCLE ANALYZER / INTERACTIVE 3D MODEL LOGIC
+    // -------------------------------------------------------------------------
+    document.addEventListener('click', function(e) {
+        const card = e.target.closest('.exercise-card');
+        if (!card) return;
+
+        const targetTag = card.querySelector('.ex-target-tag');
+        if (!targetTag) return;
+
+        const targetText = targetTag.textContent.toLowerCase();
+        const modelViewer = document.getElementById('fitness3dModel');
+        
+        let activeFound = false;
+        
+        if (modelViewer) {
+            // Default full body view
+            let orbit = "0deg 90deg 2.5m";
+            let target = "0m 1m 0m";
+            
+            if (targetText.includes('chest') || targetText.includes('pectoral')) {
+                orbit = "0deg 80deg 1m";
+                target = "0m 1.4m 0m";
+                activeFound = true;
+            }
+            else if (targetText.includes('delt') || targetText.includes('shoulder')) {
+                orbit = "45deg 70deg 1m";
+                target = "0m 1.5m 0m";
+                activeFound = true;
+            }
+            else if (targetText.includes('core') || targetText.includes('abdom')) {
+                orbit = "0deg 85deg 1m";
+                target = "0m 1.1m 0m";
+                activeFound = true;
+            }
+            else if (targetText.includes('arm') || targetText.includes('bicep') || targetText.includes('tricep') || targetText.includes('brachii')) {
+                orbit = "60deg 80deg 1m";
+                target = "0.2m 1.3m 0m"; // zoom on right arm
+                activeFound = true;
+            }
+            else if (targetText.includes('lat') || targetText.includes('back') || targetText.includes('dorsi')) {
+                orbit = "180deg 80deg 1.2m";
+                target = "0m 1.4m 0m";
+                activeFound = true;
+            }
+            else if (targetText.includes('leg') || targetText.includes('quad') || targetText.includes('squat')) {
+                orbit = "0deg 85deg 1.2m";
+                target = "0m 0.6m 0m";
+                activeFound = true;
+            }
+            else if (targetText.includes('hamstring') || targetText.includes('glute')) {
+                orbit = "180deg 85deg 1.2m";
+                target = "0m 0.6m 0m";
+                activeFound = true;
+            }
+            
+            // Apply camera changes for dynamic zoom and rotation
+            modelViewer.setAttribute("camera-orbit", orbit);
+            modelViewer.setAttribute("camera-target", target);
+            
+            // Stop auto rotation when examining a specific part
+            if (activeFound) {
+                modelViewer.removeAttribute("auto-rotate");
+            } else {
+                modelViewer.setAttribute("auto-rotate", "");
+            }
+        }
+
+        const label = document.getElementById('activeMuscleLabel');
+        if (label) {
+            if (activeFound) {
+                label.innerHTML = '<i class="fa-solid fa-fire icon-orange pulse-dot"></i> Zooming into: ' + targetTag.textContent;
+            } else {
+                label.innerHTML = '<i class="fa-solid fa-satellite-dish icon-purple"></i> Full Body / General Activation';
+            }
+        }
     });
 
 

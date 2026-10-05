@@ -3185,8 +3185,246 @@
                     <!-- ── RIGHT COLUMN: WEEKLY SCHEDULE, COACH NOTES, UPCOMING & BADGES ── -->
                     <div class="workout-sidebar-col">
 
-                        <!-- 7. WEEKLY WORKOUT SCHEDULE TABLE -->
-                        <div class="dash-card wo-schedule-card">
+                        <!-- 6.5 REALISTIC 3D BIOMETRIC MUSCLE ANALYZER -->
+                        <div class="dash-card wo-muscle-map-card" id="woMuscleCard" style="margin-bottom: 1.5rem; perspective: 1200px; overflow: hidden; background: linear-gradient(145deg, #0b1120 0%, #030712 100%); border: 1px solid rgba(139, 92, 246, 0.25); box-shadow: 0 12px 36px -8px rgba(0, 0, 0, 0.7), 0 0 20px rgba(139, 92, 246, 0.15); border-radius: 16px;">
+                            
+                            <!-- Scanner Top Header -->
+                            <div class="card-top-header" style="border-bottom: 1px solid rgba(255,255,255,0.06); padding-bottom: 0.85rem; margin-bottom: 0.85rem; display: flex; align-items: center; justify-content: space-between;">
+                                <div class="card-title-lockup">
+                                    <span class="card-category-badge badge-blue" style="background: rgba(56, 189, 248, 0.15); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.3); font-weight: 700; letter-spacing: 0.5px;"><i class="fa-solid fa-radar fa-spin" style="--fa-animation-duration: 4s;"></i> 3D BIOMETRICS</span>
+                                    <h3 class="card-box-title" style="margin-top: 4px; font-size: 1.05rem; letter-spacing: -0.2px;"><i class="fa-solid fa-person-running icon-accent"></i> Real-Time Muscle Scanner</h3>
+                                </div>
+                                
+                                <!-- View Switcher Controls -->
+                                <div class="wo-view-toggle-grp" style="display: flex; gap: 4px; background: rgba(15, 23, 42, 0.8); padding: 3px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.08);">
+                                    <button type="button" class="wo-view-btn active" id="btnViewFront" onclick="switchBodyView('front')" style="padding: 4px 10px; font-size: 0.72rem; font-weight: 600; border-radius: 7px; border: none; background: #8b5cf6; color: #fff; cursor: pointer; transition: all 0.2s ease;">Front</button>
+                                    <button type="button" class="wo-view-btn" id="btnViewBack" onclick="switchBodyView('back')" style="padding: 4px 10px; font-size: 0.72rem; font-weight: 600; border-radius: 7px; border: none; background: transparent; color: var(--text-muted); cursor: pointer; transition: all 0.2s ease;">Back</button>
+                                    <button type="button" class="icon-btn tooltip" id="btnViewTilt" onclick="toggle3DTilt()" style="width: 26px; height: 26px; font-size: 0.72rem; background: transparent; color: #a855f7; border: none; cursor: pointer;" title="Toggle 3D Hologram Tilt"><i class="fa-solid fa-cube"></i><span class="tooltiptext">3D Tilt Effect</span></button>
+                                </div>
+                            </div>
+                            
+                            <!-- Scanner Styles -->
+                            <style>
+                                .hud-laser-line {
+                                    position: absolute;
+                                    top: 0;
+                                    left: 0;
+                                    right: 0;
+                                    height: 2px;
+                                    background: linear-gradient(90deg, transparent, rgba(56, 189, 248, 0.8), rgba(139, 92, 246, 0.9), transparent);
+                                    box-shadow: 0 0 12px rgba(56, 189, 248, 0.8), 0 0 24px rgba(139, 92, 246, 0.6);
+                                    animation: laserSweep 4s ease-in-out infinite alternate;
+                                    pointer-events: none;
+                                    z-index: 15;
+                                }
+                                @keyframes laserSweep {
+                                    0% { top: 4%; opacity: 0.3; }
+                                    50% { opacity: 0.85; }
+                                    100% { top: 94%; opacity: 0.3; }
+                                }
+                                #bodyFlipInner.flipped {
+                                    transform: rotateY(180deg);
+                                }
+                                .muscle-zone {
+                                    position: absolute;
+                                    pointer-events: auto;
+                                    cursor: pointer;
+                                    transition: opacity 0.35s cubic-bezier(0.4, 0, 0.2, 1), transform 0.35s ease, filter 0.35s ease;
+                                    opacity: 0;
+                                    z-index: 10;
+                                }
+                                .muscle-zone.active {
+                                    opacity: 1 !important;
+                                    animation: musclePulse 2s ease-in-out infinite alternate;
+                                }
+                                .muscle-zone:hover {
+                                    opacity: 0.75;
+                                }
+                                @keyframes musclePulse {
+                                    0% { filter: drop-shadow(0 0 10px rgba(239, 68, 68, 0.7)) brightness(1); }
+                                    100% { filter: drop-shadow(0 0 22px rgba(239, 68, 68, 1)) drop-shadow(0 0 35px rgba(239, 68, 68, 0.8)) brightness(1.25); }
+                                }
+                                .hud-reticle-dot {
+                                    position: absolute;
+                                    width: 14px;
+                                    height: 14px;
+                                    border-radius: 50%;
+                                    border: 2px solid #ef4444;
+                                    background: rgba(239, 68, 68, 0.35);
+                                    box-shadow: 0 0 12px #ef4444;
+                                    transform: translate(-50%, -50%);
+                                    pointer-events: none;
+                                    animation: reticlePulse 1.5s infinite;
+                                }
+                                @keyframes reticlePulse {
+                                    0% { transform: translate(-50%, -50%) scale(0.85); box-shadow: 0 0 6px #ef4444; }
+                                    50% { transform: translate(-50%, -50%) scale(1.2); box-shadow: 0 0 18px #ef4444; }
+                                    100% { transform: translate(-50%, -50%) scale(0.85); box-shadow: 0 0 6px #ef4444; }
+                                }
+                                .hud-grid-bg {
+                                    background-image: 
+                                        linear-gradient(rgba(139, 92, 246, 0.05) 1px, transparent 1px),
+                                        linear-gradient(90deg, rgba(139, 92, 246, 0.05) 1px, transparent 1px);
+                                    background-size: 24px 24px;
+                                }
+                            </style>
+
+                            <!-- Scanner Stage Viewport -->
+                            <div class="wo-muscle-map-container hud-grid-bg" id="scannerViewport" style="position: relative; width: 100%; height: 420px; background-color: #020617; border-radius: 12px; display: flex; justify-content: center; align-items: center; overflow: hidden; border: 1px solid rgba(255,255,255,0.04);">
+                                
+                                <!-- Futuristic Laser Scan Beam -->
+                                <div class="hud-laser-line"></div>
+
+                                <!-- HUD Tech Badges / Corner Overlays -->
+                                <div style="position: absolute; top: 12px; left: 14px; z-index: 12; font-family: monospace; font-size: 0.68rem; color: #38bdf8; display: flex; flex-direction: column; gap: 2px; pointer-events: none; background: rgba(2, 6, 23, 0.7); padding: 4px 8px; border-radius: 6px; border-left: 2px solid #38bdf8;">
+                                    <span>SYSTEM // <strong style="color:#a855f7;">ONLINE</strong></span>
+                                    <span>TARGET // <strong id="hudTargetMode" style="color:#10b981;">IDLE</strong></span>
+                                </div>
+                                <div style="position: absolute; top: 12px; right: 14px; z-index: 12; font-family: monospace; font-size: 0.68rem; color: var(--text-muted); background: rgba(2, 6, 23, 0.7); padding: 4px 8px; border-radius: 6px; border-right: 2px solid #8b5cf6; pointer-events: none;">
+                                    <span>MODE // <strong id="hudViewLabel" style="color:#e2e8f0;">FRONT 3D</strong></span>
+                                </div>
+
+                                <!-- 3D Flip Card Container with Tilt Physics -->
+                                <div id="bodyFlipInner" style="position: relative; width: 100%; height: 100%; transition: transform 0.75s cubic-bezier(0.34, 1.56, 0.64, 1); transform-style: preserve-3d; display: flex; justify-content: center; align-items: center;">
+                                    
+                                    <!-- ════ FRONT VIEW ════ -->
+                                    <div class="body-front" style="position: absolute; width: 100%; height: 100%; backface-visibility: hidden; display: flex; justify-content: center; align-items: center; overflow: hidden;">
+                                        
+                                        <!-- Realistic Model Aspect Container -->
+                                        <div id="modelFrontWrapper" style="position: relative; height: 100%; aspect-ratio: 16/9; display: flex; justify-content: center; align-items: center;">
+                                            
+                                            <!-- Base Ultra-Realistic 3D Character Model -->
+                                            <img src="img/3d-model-front.png" style="height: 96%; width: auto; object-fit: contain; filter: drop-shadow(0 8px 24px rgba(0,0,0,0.8)); pointer-events: none; user-select: none;" alt="3D Athletic Human Model">
+                                            
+                                            <!-- ─── ANATOMICAL MUSCLE OVERLAYS (FRONT) ─── -->
+
+                                            <!-- 1. CHEST / PECTORALIS MAJOR -->
+                                            <div id="mz-chest" class="muscle-zone" data-muscle="Chest (Pectoralis Major)" title="Chest • Pectoralis Major" style="top: 24%; left: 45.2%; width: 9.6%; height: 8.5%; border-radius: 20px 20px 14px 14px; background: radial-gradient(circle, rgba(239, 68, 68, 0.75) 0%, rgba(220, 38, 38, 0.4) 60%, transparent 100%); box-shadow: 0 0 20px 6px rgba(239, 68, 68, 0.85), inset 0 0 10px rgba(255, 255, 255, 0.3); border: 1px solid rgba(239, 68, 68, 0.8);">
+                                                <div class="hud-reticle-dot" style="top: 50%; left: 50%;"></div>
+                                            </div>
+
+                                            <!-- 2. SHOULDERS / ANTERIOR & LATERAL DELTOIDS -->
+                                            <div id="mz-deltoids" class="muscle-zone" data-muscle="Deltoids (Shoulders)" title="Shoulders • Anterior & Lateral Deltoids" style="top: 21%; left: 39%; width: 22%; height: 8%; background: transparent; pointer-events: none;">
+                                                <!-- Left Shoulder Cap -->
+                                                <div style="position: absolute; top: 0; left: 0; width: 24%; height: 100%; border-radius: 50% 30% 50% 40%; background: radial-gradient(circle, rgba(56, 189, 248, 0.8) 0%, rgba(14, 165, 233, 0.45) 60%, transparent 100%); box-shadow: 0 0 18px 5px rgba(56, 189, 248, 0.85); border: 1px solid rgba(56, 189, 248, 0.8);">
+                                                    <div class="hud-reticle-dot" style="top: 45%; left: 50%; border-color: #38bdf8; box-shadow: 0 0 12px #38bdf8; background: rgba(56, 189, 248, 0.4);"></div>
+                                                </div>
+                                                <!-- Right Shoulder Cap -->
+                                                <div style="position: absolute; top: 0; right: 0; width: 24%; height: 100%; border-radius: 30% 50% 40% 50%; background: radial-gradient(circle, rgba(56, 189, 248, 0.8) 0%, rgba(14, 165, 233, 0.45) 60%, transparent 100%); box-shadow: 0 0 18px 5px rgba(56, 189, 248, 0.85); border: 1px solid rgba(56, 189, 248, 0.8);">
+                                                    <div class="hud-reticle-dot" style="top: 45%; left: 50%; border-color: #38bdf8; box-shadow: 0 0 12px #38bdf8; background: rgba(56, 189, 248, 0.4);"></div>
+                                                </div>
+                                            </div>
+
+                                            <!-- 3. ARMS / BICEPS & TRICEPS & FOREARMS -->
+                                            <div id="mz-arms" class="muscle-zone" data-muscle="Biceps & Triceps (Arms)" title="Arms • Biceps & Triceps" style="top: 27%; left: 33.5%; width: 33%; height: 18%; background: transparent; pointer-events: none;">
+                                                <!-- Left Arm -->
+                                                <div style="position: absolute; top: 0; left: 0; width: 22%; height: 100%; border-radius: 30px; background: radial-gradient(ellipse, rgba(168, 85, 247, 0.75) 0%, rgba(147, 51, 234, 0.4) 60%, transparent 100%); box-shadow: 0 0 18px 5px rgba(168, 85, 247, 0.8); border: 1px solid rgba(168, 85, 247, 0.7);">
+                                                    <div class="hud-reticle-dot" style="top: 40%; left: 50%; border-color: #a855f7; box-shadow: 0 0 12px #a855f7; background: rgba(168, 85, 247, 0.4);"></div>
+                                                </div>
+                                                <!-- Right Arm -->
+                                                <div style="position: absolute; top: 0; right: 0; width: 22%; height: 100%; border-radius: 30px; background: radial-gradient(ellipse, rgba(168, 85, 247, 0.75) 0%, rgba(147, 51, 234, 0.4) 60%, transparent 100%); box-shadow: 0 0 18px 5px rgba(168, 85, 247, 0.8); border: 1px solid rgba(168, 85, 247, 0.7);">
+                                                    <div class="hud-reticle-dot" style="top: 40%; left: 50%; border-color: #a855f7; box-shadow: 0 0 12px #a855f7; background: rgba(168, 85, 247, 0.4);"></div>
+                                                </div>
+                                            </div>
+
+                                            <!-- 4. CORE / ABDOMINALS & OBLIQUES -->
+                                            <div id="mz-core" class="muscle-zone" data-muscle="Core (Abdominals)" title="Core • Rectus Abdominis & Obliques" style="top: 32.5%; left: 46.5%; width: 7%; height: 14%; border-radius: 14px; background: radial-gradient(circle, rgba(245, 158, 11, 0.8) 0%, rgba(217, 119, 6, 0.45) 70%, transparent 100%); box-shadow: 0 0 20px 6px rgba(245, 158, 11, 0.85); border: 1px solid rgba(245, 158, 11, 0.8);">
+                                                <div class="hud-reticle-dot" style="top: 45%; left: 50%; border-color: #f59e0b; box-shadow: 0 0 12px #f59e0b; background: rgba(245, 158, 11, 0.4);"></div>
+                                            </div>
+
+                                            <!-- 5. LEGS / QUADRICEPS -->
+                                            <div id="mz-legs" class="muscle-zone" data-muscle="Quadriceps (Legs)" title="Legs • Quadriceps" style="top: 48%; left: 43.5%; width: 13%; height: 26%; background: transparent; pointer-events: none;">
+                                                <!-- Left Quad -->
+                                                <div style="position: absolute; top: 0; left: 0; width: 42%; height: 100%; border-radius: 20px 20px 14px 14px; background: radial-gradient(ellipse, rgba(16, 185, 129, 0.75) 0%, rgba(5, 150, 105, 0.4) 65%, transparent 100%); box-shadow: 0 0 20px 5px rgba(16, 185, 129, 0.8); border: 1px solid rgba(16, 185, 129, 0.75);">
+                                                    <div class="hud-reticle-dot" style="top: 45%; left: 50%; border-color: #10b981; box-shadow: 0 0 12px #10b981; background: rgba(16, 185, 129, 0.4);"></div>
+                                                </div>
+                                                <!-- Right Quad -->
+                                                <div style="position: absolute; top: 0; right: 0; width: 42%; height: 100%; border-radius: 20px 20px 14px 14px; background: radial-gradient(ellipse, rgba(16, 185, 129, 0.75) 0%, rgba(5, 150, 105, 0.4) 65%, transparent 100%); box-shadow: 0 0 20px 5px rgba(16, 185, 129, 0.8); border: 1px solid rgba(16, 185, 129, 0.75);">
+                                                    <div class="hud-reticle-dot" style="top: 45%; left: 50%; border-color: #10b981; box-shadow: 0 0 12px #10b981; background: rgba(16, 185, 129, 0.4);"></div>
+                                                </div>
+                                            </div>
+
+                                            <!-- 6. CALVES / LOWER LEGS -->
+                                            <div id="mz-calves" class="muscle-zone" data-muscle="Calves (Lower Legs)" title="Calves • Gastrocnemius & Soleus" style="top: 74%; left: 42.5%; width: 15%; height: 17%; background: transparent; pointer-events: none;">
+                                                <div style="position: absolute; top: 0; left: 0; width: 40%; height: 100%; border-radius: 12px; background: radial-gradient(ellipse, rgba(20, 184, 166, 0.75) 0%, transparent 100%); box-shadow: 0 0 15px 4px rgba(20, 184, 166, 0.7); border: 1px solid rgba(20, 184, 166, 0.7);"></div>
+                                                <div style="position: absolute; top: 0; right: 0; width: 40%; height: 100%; border-radius: 12px; background: radial-gradient(ellipse, rgba(20, 184, 166, 0.75) 0%, transparent 100%); box-shadow: 0 0 15px 4px rgba(20, 184, 166, 0.7); border: 1px solid rgba(20, 184, 166, 0.7);"></div>
+                                            </div>
+
+                                            <!-- 7. FULL BODY / JOINT MOBILITY -->
+                                            <div id="mz-fullbody" class="muscle-zone" data-muscle="Full Body Kinetic Chain" title="Full Body • Mobility & Joint Activation" style="top: 15%; left: 35%; width: 30%; height: 75%; border-radius: 40px; background: radial-gradient(circle, rgba(139, 92, 246, 0.25) 0%, transparent 70%); box-shadow: 0 0 35px 12px rgba(139, 92, 246, 0.45); border: 1px dashed rgba(139, 92, 246, 0.6); pointer-events: none;">
+                                            </div>
+
+                                        </div>
+                                    </div>
+
+                                    <!-- ════ BACK VIEW ════ -->
+                                    <div class="body-back" style="position: absolute; width: 100%; height: 100%; backface-visibility: hidden; transform: rotateY(180deg); display: flex; justify-content: center; align-items: center; overflow: hidden;">
+                                        
+                                        <div id="modelBackWrapper" style="position: relative; height: 100%; aspect-ratio: 16/9; display: flex; justify-content: center; align-items: center;">
+                                            
+                                            <!-- Realistic Back Silhouette Perspective -->
+                                            <img src="img/3d-model-front.png" style="height: 96%; width: auto; object-fit: contain; filter: brightness(0.65) contrast(1.25) sepia(0.6) hue-rotate(220deg) saturate(1.8) drop-shadow(0 8px 24px rgba(0,0,0,0.8)); transform: scaleX(-1); pointer-events: none; user-select: none;" alt="3D Model Back Silhouette">
+                                            
+                                            <!-- ─── ANATOMICAL MUSCLE OVERLAYS (BACK) ─── -->
+
+                                            <!-- 1. LATS / LATISSIMUS DORSI & UPPER BACK -->
+                                            <div id="mz-lats" class="muscle-zone" data-muscle="Lats & Upper Back (Latissimus Dorsi)" title="Back • Latissimus Dorsi" style="top: 24%; left: 42%; width: 16%; height: 15%; background: transparent; pointer-events: none;">
+                                                <!-- Left Lat Wing -->
+                                                <div style="position: absolute; top: 0; left: 0; width: 44%; height: 100%; border-radius: 12px 30px 40px 10px; background: radial-gradient(ellipse, rgba(99, 102, 241, 0.8) 0%, rgba(79, 70, 229, 0.45) 60%, transparent 100%); box-shadow: 0 0 20px 6px rgba(99, 102, 241, 0.85); border: 1px solid rgba(99, 102, 241, 0.8);">
+                                                    <div class="hud-reticle-dot" style="top: 45%; left: 50%; border-color: #6366f1; box-shadow: 0 0 12px #6366f1; background: rgba(99, 102, 241, 0.4);"></div>
+                                                </div>
+                                                <!-- Right Lat Wing -->
+                                                <div style="position: absolute; top: 0; right: 0; width: 44%; height: 100%; border-radius: 30px 12px 10px 40px; background: radial-gradient(ellipse, rgba(99, 102, 241, 0.8) 0%, rgba(79, 70, 229, 0.45) 60%, transparent 100%); box-shadow: 0 0 20px 6px rgba(99, 102, 241, 0.85); border: 1px solid rgba(99, 102, 241, 0.8);">
+                                                    <div class="hud-reticle-dot" style="top: 45%; left: 50%; border-color: #6366f1; box-shadow: 0 0 12px #6366f1; background: rgba(99, 102, 241, 0.4);"></div>
+                                                </div>
+                                            </div>
+
+                                            <!-- 2. HAMSTRINGS / POSTERIOR CHAIN -->
+                                            <div id="mz-hamstrings" class="muscle-zone" data-muscle="Hamstrings (Biceps Femoris)" title="Legs • Hamstrings" style="top: 48%; left: 43.5%; width: 13%; height: 26%; background: transparent; pointer-events: none;">
+                                                <div style="position: absolute; top: 0; left: 0; width: 42%; height: 100%; border-radius: 14px; background: radial-gradient(ellipse, rgba(236, 72, 153, 0.75) 0%, rgba(219, 39, 119, 0.4) 65%, transparent 100%); box-shadow: 0 0 20px 5px rgba(236, 72, 153, 0.8); border: 1px solid rgba(236, 72, 153, 0.75);">
+                                                    <div class="hud-reticle-dot" style="top: 50%; left: 50%; border-color: #ec4899; box-shadow: 0 0 12px #ec4899; background: rgba(236, 72, 153, 0.4);"></div>
+                                                </div>
+                                                <div style="position: absolute; top: 0; right: 0; width: 42%; height: 100%; border-radius: 14px; background: radial-gradient(ellipse, rgba(236, 72, 153, 0.75) 0%, rgba(219, 39, 119, 0.4) 65%, transparent 100%); box-shadow: 0 0 20px 5px rgba(236, 72, 153, 0.8); border: 1px solid rgba(236, 72, 153, 0.75);">
+                                                    <div class="hud-reticle-dot" style="top: 50%; left: 50%; border-color: #ec4899; box-shadow: 0 0 12px #ec4899; background: rgba(236, 72, 153, 0.4);"></div>
+                                                </div>
+                                            </div>
+
+                                            <!-- 3. GLUTES / GLUTEUS MAXIMUS -->
+                                            <div id="mz-glutes" class="muscle-zone" data-muscle="Glutes (Gluteus Maximus)" title="Glutes • Gluteus Maximus" style="top: 40%; left: 43.5%; width: 13%; height: 11%; background: transparent; pointer-events: none;">
+                                                <div style="position: absolute; top: 0; left: 0; width: 44%; height: 100%; border-radius: 50%; background: radial-gradient(circle, rgba(244, 63, 94, 0.8) 0%, transparent 100%); box-shadow: 0 0 18px 5px rgba(244, 63, 94, 0.85); border: 1px solid rgba(244, 63, 94, 0.8);"></div>
+                                                <div style="position: absolute; top: 0; right: 0; width: 44%; height: 100%; border-radius: 50%; background: radial-gradient(circle, rgba(244, 63, 94, 0.8) 0%, transparent 100%); box-shadow: 0 0 18px 5px rgba(244, 63, 94, 0.85); border: 1px solid rgba(244, 63, 94, 0.8);"></div>
+                                            </div>
+
+                                        </div>
+                                    </div>
+
+                                </div>
+
+                                <!-- Bottom Status HUD Overlay -->
+                                <div class="wo-muscle-legend" style="position: absolute; bottom: 10px; left: 12px; right: 12px; font-size: 0.75rem; color: #cbd5e1; display: flex; align-items: center; justify-content: space-between; background: rgba(15, 23, 42, 0.85); padding: 0.45rem 0.85rem; border-radius: 10px; border: 1px solid rgba(255,255,255,0.08); backdrop-filter: blur(8px); z-index: 12;">
+                                    <div style="display: flex; align-items: center; gap: 8px;">
+                                        <span style="display: inline-block; width: 8px; height: 8px; background: #ef4444; border-radius: 50%; box-shadow: 0 0 8px #ef4444;"></span>
+                                        <span style="font-weight: 600; font-size: 0.72rem; color: #f87171;" id="hudActivationType">PRIMARY TARGET</span>
+                                    </div>
+                                    <div style="display: flex; align-items: center; gap: 6px;">
+                                        <span style="font-size: 0.7rem; color: var(--text-muted);">POWER:</span>
+                                        <span style="font-weight: 700; font-size: 0.74rem; color: #38bdf8;" id="hudIntensityVal">100% EXERTION</span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Dynamic Activation Callout Box -->
+                            <div style="padding: 1rem 0.5rem 0.25rem 0.5rem; text-align: center;">
+                                <div id="activeMuscleLabel" style="font-weight: 600; color: var(--text-light); font-size: 0.95rem; line-height: 1.4;">
+                                    <i class="fa-solid fa-crosshairs icon-purple pulse-dot"></i> <span id="activeMuscleText">Tap any exercise card to scan targeted muscles</span>
+                                </div>
+                                <div id="activeMuscleSub" style="font-size: 0.76rem; color: var(--text-muted); margin-top: 4px;">
+                                    Biometric targeting updates in real-time with exercise selection
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 7. WEEKLY WORKOUT SCHEDULE TABLE -->                 <div class="dash-card wo-schedule-card">
                             <div class="card-top-header">
                                 <div class="card-title-lockup">
                                     <span class="card-category-badge badge-purple">7-DAY PLAN</span>
@@ -9201,3 +9439,4 @@
 </body>
 
 </html>
+
