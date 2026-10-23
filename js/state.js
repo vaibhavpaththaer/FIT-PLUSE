@@ -33,6 +33,38 @@
         return endpoint;
     }
 
+    // Local / Offline Registered Accounts Store Helper
+    function saveRegisteredAccount(identifier, password, role = 'user', profileData = {}) {
+        try {
+            const key = 'fitpulse_local_accounts';
+            const accounts = JSON.parse(localStorage.getItem(key) || '{}');
+            const cleanId = String(identifier || '').trim().toLowerCase();
+            if (cleanId) {
+                accounts[cleanId] = {
+                    identifier: cleanId,
+                    password: password,
+                    role: role,
+                    profile: profileData,
+                    savedAt: Date.now()
+                };
+                localStorage.setItem(key, JSON.stringify(accounts));
+            }
+        } catch(e) {
+            console.warn('Could not save local account:', e);
+        }
+    }
+
+    function getRegisteredAccount(identifier) {
+        try {
+            const key = 'fitpulse_local_accounts';
+            const accounts = JSON.parse(localStorage.getItem(key) || '{}');
+            const cleanId = String(identifier || '').trim().toLowerCase();
+            return accounts[cleanId] || null;
+        } catch(e) {
+            return null;
+        }
+    }
+
     // Global fetch interceptor to guarantee backend connection and centralized error handling
     const originalFetch = window.fetch;
     window.fetch = async function() {

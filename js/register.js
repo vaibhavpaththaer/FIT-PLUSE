@@ -201,7 +201,7 @@
             }
 
             try {
-                const response = await fetch('/api/coach/register', {
+                const response = await fetch(getApiUrl('/api/coach/register'), {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -225,16 +225,19 @@
                     })
                 });
 
-                const data = await response.json();
+                let data = null;
+                try {
+                    data = await response.json();
+                } catch(e) {}
 
-                if (response.ok && data.success) {
+                if (response.ok && data && data.success) {
                     showToast('Coach account registered successfully! Logging you in...', 'fa-circle-check');
                     
-                    saveRegisteredAccount(email, password, 'coach');
-                    saveRegisteredAccount(mobile, password, 'coach');
+                    saveRegisteredAccount(email, password, 'coach', { fullName: name, email, mobileNumber: mobile, role: 'coach' });
+                    saveRegisteredAccount(mobile, password, 'coach', { fullName: name, email, mobileNumber: mobile, role: 'coach' });
 
                     try {
-                        const loginRes = await fetch('/api/login', {
+                        const loginRes = await fetch(getApiUrl('/api/auth/login'), {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
                             body: JSON.stringify({ identifier: email, password: password, loginRole: 'coach' })
@@ -249,6 +252,12 @@
                         }
                     } catch (e) { console.warn(e); }
 
+                    if (typeof window.openDashboardScreen === 'function') {
+                        window.openDashboardScreen(name, email, 'coach');
+                        coachRegisterCard.classList.add('hidden');
+                        return;
+                    }
+
                     identifierInput.value = email;
                     passwordInput.value = password;
                     const coachRoleInput = loginForm.querySelector('input[name="loginRole"][value="coach"]');
@@ -259,26 +268,30 @@
                         loginCard.classList.remove('hidden');
                         goToCoachStep(1);
                     }, 1200);
+                } else if (response.status === 404 || response.status === 405 || (!data && !response.ok)) {
+                    // Static host (GitHub Pages) or offline fallback
+                    showToast('Coach account registered successfully! Logging you in...', 'fa-circle-check');
+                    saveRegisteredAccount(email, password, 'coach', { fullName: name, email, mobileNumber: mobile, role: 'coach' });
+                    saveRegisteredAccount(mobile, password, 'coach', { fullName: name, email, mobileNumber: mobile, role: 'coach' });
+                    if (typeof window.openDashboardScreen === 'function') {
+                        window.openDashboardScreen(name, email, 'coach');
+                    }
+                    coachRegisterCard.classList.add('hidden');
+                    return;
                 } else {
-                    showToast(data.message || 'Registration failed. Please check details.', 'fa-triangle-exclamation');
+                    showToast((data && data.message) || 'Registration failed. Please check details.', 'fa-triangle-exclamation');
                 }
             } catch (err) {
                 console.warn('Network issue during coach registration, using fallback:', err);
                 showToast('Coach account registered successfully! Logging you in...', 'fa-circle-check');
                 
-                saveRegisteredAccount(email, password, 'coach');
-                saveRegisteredAccount(mobile, password, 'coach');
+                saveRegisteredAccount(email, password, 'coach', { fullName: name, email, mobileNumber: mobile, role: 'coach' });
+                saveRegisteredAccount(mobile, password, 'coach', { fullName: name, email, mobileNumber: mobile, role: 'coach' });
 
-                identifierInput.value = email;
-                passwordInput.value = password;
-                const coachRoleInput = loginForm.querySelector('input[name="loginRole"][value="coach"]');
-                if (coachRoleInput) coachRoleInput.checked = true;
-
-                setTimeout(() => {
-                    coachRegisterCard.classList.add('hidden');
-                    loginCard.classList.remove('hidden');
-                    goToCoachStep(1);
-                }, 1200);
+                if (typeof window.openDashboardScreen === 'function') {
+                    window.openDashboardScreen(name, email, 'coach');
+                }
+                coachRegisterCard.classList.add('hidden');
             } finally {
                 if (coachRegisterSubmitBtn) {
                     coachRegisterSubmitBtn.disabled = false;
@@ -768,9 +781,13 @@
                     stepNodes[3].classList.add('done');
                 }
 
+                saveRegisteredAccount(email, password, 'user', registrationPayload);
+                saveRegisteredAccount(mobile, password, 'user', registrationPayload);
+
                 // Instantly update state & localStorage for immediate render
                 regProfile.name = name;
                 regProfile.email = email;
+                regProfile.mobile = mobile;
                 regProfile.role = 'user';
                 try { localStorage.setItem('fitpulse_user_name', name); } catch(e){}
                 try { localStorage.setItem('fitpulse_user_email', email); } catch(e){}
@@ -804,6 +821,41 @@
                 }).catch(e => console.warn('Background session setup notice:', e));
 
                 return;
+            } else if (response.status === 404 || response.status === 405 || (!data && !response.ok)) {
+                // Static host (GitHub Pages) or API unavailable -> Register smoothly in browser!
+                console.warn('Backend unavailable (status ' + response.status + '), registering locally in browser...');
+
+                if (stepNodes && stepNodes[3]) {
+                    stepNodes[3].classList.remove('active');
+                    stepNodes[3].classList.add('done');
+                }
+
+                saveRegisteredAccount(email, password, 'user', registrationPayload);
+                saveRegisteredAccount(mobile, password, 'user', registrationPayload);
+
+                regProfile.name = name;
+                regProfile.email = email;
+                regProfile.mobile = mobile;
+                regProfile.role = 'user';
+                try { localStorage.setItem('fitpulse_user_name', name); } catch(e){}
+                try { localStorage.setItem('fitpulse_user_email', email); } catch(e){}
+                if (registrationPayload.avatarUrl) {
+                    regProfile.avatarUrl = registrationPayload.avatarUrl;
+                    try { localStorage.setItem('fitpulse_user_avatar', registrationPayload.avatarUrl); } catch(e){}
+                }
+                if (registrationPayload.dietPreference) {
+                    regProfile.dietPreference = registrationPayload.dietPreference;
+                    try { localStorage.setItem('fitpulse_user_diet', registrationPayload.dietPreference); } catch(e){}
+                }
+                sessionStorage.setItem('fitpulse_user_role', 'user');
+                sessionStorage.setItem('fitpulse_logged_in', 'true');
+
+                showToast(`🎉 Account created! Welcome, ${name}!`, 'fa-circle-check');
+
+                if (typeof openDashboardScreen === 'function') {
+                    openDashboardScreen(name, email, 'user');
+                }
+                return;
             } else {
                 const errMsg = (data && data.message) ? data.message : 'Registration failed. Please check your information.';
                 showToast(errMsg, 'fa-triangle-exclamation');
@@ -814,11 +866,40 @@
         } catch (err) {
             clearTimeout(timeoutId);
             console.error('Backend registration API error:', err);
-            if (err.name === 'AbortError') {
-                showToast('Registration request timed out. Please try again.', 'fa-clock');
-            } else {
-                showToast('Unable to connect to registration server. Please check your connection.', 'fa-circle-xmark');
+
+            // Network error / local server stopped -> Seamless browser registration fallback
+            console.warn('Network error, registering locally in browser fallback...');
+            if (stepNodes && stepNodes[3]) {
+                stepNodes[3].classList.remove('active');
+                stepNodes[3].classList.add('done');
             }
+
+            saveRegisteredAccount(email, password, 'user', registrationPayload);
+            saveRegisteredAccount(mobile, password, 'user', registrationPayload);
+
+            regProfile.name = name;
+            regProfile.email = email;
+            regProfile.mobile = mobile;
+            regProfile.role = 'user';
+            try { localStorage.setItem('fitpulse_user_name', name); } catch(e){}
+            try { localStorage.setItem('fitpulse_user_email', email); } catch(e){}
+            if (registrationPayload.avatarUrl) {
+                regProfile.avatarUrl = registrationPayload.avatarUrl;
+                try { localStorage.setItem('fitpulse_user_avatar', registrationPayload.avatarUrl); } catch(e){}
+            }
+            if (registrationPayload.dietPreference) {
+                regProfile.dietPreference = registrationPayload.dietPreference;
+                try { localStorage.setItem('fitpulse_user_diet', registrationPayload.dietPreference); } catch(e){}
+            }
+            sessionStorage.setItem('fitpulse_user_role', 'user');
+            sessionStorage.setItem('fitpulse_logged_in', 'true');
+
+            showToast(`🎉 Account created! Welcome, ${name}!`, 'fa-circle-check');
+
+            if (typeof openDashboardScreen === 'function') {
+                openDashboardScreen(name, email, 'user');
+            }
+            return;
         } finally {
             if (registerSubmitBtn) {
                 registerSubmitBtn.disabled = false;
